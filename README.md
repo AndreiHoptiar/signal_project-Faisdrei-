@@ -66,3 +66,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Project Members
 - Student ID: 6431280 (Andrei Hoptiar)
+- Student ID: 6349291 (Faisal Shadid)
