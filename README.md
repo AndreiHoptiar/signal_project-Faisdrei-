@@ -44,13 +44,13 @@ The Cardio Data Simulator is a Java-based application designed to simulate real-
 After packaging, you can run the simulator directly from the executable JAR:
 
 ```sh
-java -jar target/cardio_generator-1.0-SNAPSHOT.jar
+java -jar target/6431280_6349291_cardio_data_simulator.jar.jar
 ```
 
 To run with specific options (e.g., to set the patient count and choose an output strategy):
 
 ```sh
-java -jar target/cardio_generator-1.0-SNAPSHOT.jar --patient-count 100 --output file:./output
+java -jar target/6431280_6349291_cardio_data_simulator.jar.jar --patient-count 100 --output file:./output
 ```
 
 ### Supported Output Options
