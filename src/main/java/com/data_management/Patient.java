@@ -50,37 +50,4 @@ public class Patient {
     public List<PatientRecord> getRecords(long startTime, long endTime) {
         // Walk through every record this patient has and keep only the ones
         // whose timestamp is inside the [startTime, endTime] window (inclusive).
-        // Assumption: both bounds are inclusive. This matches the example test
-        // in DataStorageTest where records taken at the start and end timestamps
-        // are both expected to be returned.
-        List<PatientRecord> recordsInRange = new ArrayList<>();
-        for (PatientRecord record : patientRecords) {
-            long t = record.getTimestamp();
-            if (t >= startTime && t <= endTime) {
-                recordsInRange.add(record);
-            }
-        }
-        return recordsInRange;
-    }
-
-    /**
-     * Returns the unique ID of this patient.
-     *
-     * @return this patient's ID
-     */
-    public int getPatientId() {
-        return patientId;
-    }
-
-    /**
-     * Returns every record stored for this patient, regardless of timestamp.
-     * Useful for tests and for the AlertGenerator when it wants to look at
-     * the entire history at once. Returns a defensive copy so callers cannot
-     * mutate the internal list.
-     *
-     * @return a new list containing all of this patient's records
-     */
-    public List<PatientRecord> getAllRecords() {
-        return new ArrayList<>(patientRecords);
-    }
-}
+        // Assu
