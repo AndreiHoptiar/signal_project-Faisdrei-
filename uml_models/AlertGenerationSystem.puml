@@ -1,0 +1,90 @@
+@startuml AlertGenerationSystem
+title Alert Generation System
+
+package "com.alerts" {
+
+  class AlertGenerator {
+    - dataStorage : DataStorage
+    - SYSTOLIC_HIGH : double {static}
+    - SYSTOLIC_LOW  : double {static}
+    - DIASTOLIC_HIGH: double {static}
+    - DIASTOLIC_LOW : double {static}
+    - BP_TREND_DELTA : double {static}
+    - LOW_SATURATION : double {static}
+    - RAPID_DROP_PERCENT : double {static}
+    - ECG_WINDOW_SIZE : int {static}
+    + AlertGenerator(dataStorage : DataStorage)
+    + evaluateData(patient : Patient) : void
+    # triggerAlert(alert : Alert) : void
+    - checkBloodPressureCriticalThresholds(records : List<PatientRecord>) : void
+    - checkBloodPressureTrend(records : List<PatientRecord>, type : String) : void
+    - checkLowSaturation(records : List<PatientRecord>) : void
+    - checkRapidSaturationDrop(records : List<PatientRecord>) : void
+    - checkHypotensiveHypoxemia(records : List<PatientRecord>) : void
+    - checkAbnormalEcg(records : List<PatientRecord>) : void
+    - checkManualTriggeredAlerts(records : List<PatientRecord>) : void
+  }
+
+  class Alert {
+    - patientId : String
+    - condition : String
+    - timestamp : long
+    + Alert(patientId : String, condition : String, timestamp : long)
+    + getPatientId() : String
+    + getCondition() : String
+    + getTimestamp() : long
+  }
+
+  class AlertManager {
+    - staffList : List<MedicalStaff>
+    + dispatch(alert : Alert) : void
+    + addStaff(staff : MedicalStaff) : void
+  }
+
+  class MedicalStaff {
+    - staffId : String
+    - name : String
+    - role : String
+    + notify(alert : Alert) : void
+  }
+
+  interface AlertStrategy {
+    + evaluate(records : List<PatientRecord>) : boolean
+  }
+
+  class ThresholdRule {
+    - metric : String
+    - min : double
+    - max : double
+    + evaluate(records : List<PatientRecord>) : boolean
+  }
+}
+
+package "com.data_management" {
+  class DataStorage {
+    + getAllPatients() : List<Patient>
+    + getRecords(patientId : int, start : long, end : long) : List<PatientRecord>
+  }
+  class Patient {
+    - patientId : int
+    + getAllRecords() : List<PatientRecord>
+  }
+  class PatientRecord {
+    - patientId : int
+    - recordType : String
+    - measurementValue : double
+    - timestamp : long
+  }
+}
+
+AlertGenerator --> DataStorage : uses >
+AlertGenerator --> Patient : evaluates >
+AlertGenerator ..> Alert : creates >
+AlertGenerator --> AlertManager : dispatches via >
+AlertGenerator ..> AlertStrategy : applies >
+AlertManager --> MedicalStaff : notifies >
+ThresholdRule ..|> AlertStrategy
+Alert --* AlertManager : contains >
+Patient "1" *-- "0..*" PatientRecord
+
+@enduml

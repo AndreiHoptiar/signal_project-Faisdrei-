@@ -1,0 +1,71 @@
+@startuml DataStorageSystem
+title Data Storage System
+
+package "com.data_management" {
+
+  class DataStorage {
+    - patientMap : Map<Integer, Patient>
+    + DataStorage()
+    + addPatientData(patientId : int, value : double, type : String, timestamp : long) : void
+    + getRecords(patientId : int, start : long, end : long) : List<PatientRecord>
+    + getAllPatients() : List<Patient>
+  }
+
+  class Patient {
+    - patientId : int
+    - patientRecords : List<PatientRecord>
+    + Patient(patientId : int)
+    + addRecord(value : double, type : String, timestamp : long) : void
+    + getRecords(start : long, end : long) : List<PatientRecord>
+    + getAllRecords() : List<PatientRecord>
+    + getPatientId() : int
+  }
+
+  class PatientRecord {
+    - patientId : int
+    - recordType : String
+    - measurementValue : double
+    - timestamp : long
+    + getPatientId() : int
+    + getMeasurementValue() : double
+    + getRecordType() : String
+    + getTimestamp() : long
+  }
+
+  interface DataReader {
+    + readData(storage : DataStorage) : void
+  }
+
+  class FileDataReader {
+    - directoryPath : String
+    + FileDataReader(directoryPath : String)
+    + readData(storage : DataStorage) : void
+  }
+
+  class DataRetriever {
+    - storage : DataStorage
+    + DataRetriever(storage : DataStorage)
+    + getByPatient(patientId : int) : List<PatientRecord>
+    + getByTimeRange(patientId : int, start : long, end : long) : List<PatientRecord>
+  }
+
+  class AccessControl {
+    - authorisedRoles : Set<String>
+    + canRead(userRole : String, patientId : int) : boolean
+  }
+
+  class RetentionPolicy {
+    - maxAgeMs : long
+    + purgeExpired(storage : DataStorage) : void
+  }
+}
+
+DataStorage "1" *-- "0..*" Patient : stores >
+Patient "1" *-- "0..*" PatientRecord : contains >
+FileDataReader ..|> DataReader
+DataReader ..> DataStorage : populates >
+DataRetriever --> DataStorage : queries >
+RetentionPolicy --> DataStorage : purges >
+AccessControl ..> DataRetriever : guards >
+
+@enduml
