@@ -29,13 +29,40 @@ import java.util.ArrayList;
  * This is the main class that runs the whole health data simulation.
  * It sets up all the patients and keeps generating health data for them
  * like ECG, blood pressure, saturation and alerts on a schedule.
+ *
+ * <p><b>Design pattern — Singleton:</b> a single shared instance is available
+ * via {@link #getInstance()}. The static {@link #main(String[])} entry point
+ * obtains the instance before starting the simulation.
  */
 public class HealthDataSimulator {
+
+    /** The singleton instance; {@code null} until the first call to {@link #getInstance()}. */
+    private static volatile HealthDataSimulator instance;
 
     private static int patientCount = 50; // Default number of patients
     private static ScheduledExecutorService scheduler;
     private static OutputStrategy outputStrategy = new ConsoleOutputStrategy(); // Default output strategy
     private static final Random random = new Random();
+
+    /** Private constructor — use {@link #getInstance()} to obtain the singleton. */
+    private HealthDataSimulator() {}
+
+    /**
+     * Returns the singleton {@code HealthDataSimulator} instance, creating it on
+     * the first call (thread-safe lazy initialisation).
+     *
+     * @return the shared {@code HealthDataSimulator} instance
+     */
+    public static HealthDataSimulator getInstance() {
+        if (instance == null) {
+            synchronized (HealthDataSimulator.class) {
+                if (instance == null) {
+                    instance = new HealthDataSimulator();
+                }
+            }
+        }
+        return instance;
+    }
 
     /**
      * This is where the program starts. It reads the arguments you pass in,

@@ -72,59 +72,42 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## UML Diagrams
 
-All UML diagrams are located in the [`uml_models/`](uml_models/) directory.
-PlantUML source files (`.puml`) are included alongside the PNG exports so the
-diagrams can be re-rendered at any time (e.g. with the IntelliJ PlantUML plugin).
-
 ### 1. Alert Generation System
 
-![Alert Generation System](uml_models/AlertGenerationSystem.png)
+![Alert Generation System](UML/AlertGenerator%20Updated.drawio.png)
 
-The alert generation system separates *detecting* a dangerous condition from
-*dispatching* the resulting alert. `AlertGenerator` holds a reference to
-`DataStorage` (to retrieve patient records) and to a `Patient` object it is
-currently evaluating — satisfying the feedback requirement that the diagram
-connects to both data storage and patient identification. Each alert rule is
-a private helper method, following the Single Responsibility principle.
+In the alert generation system, we wanted to ensure the code that checks the patient's vitals is separate from the code that generates the alert. The key class here is the AlertGenerator — it takes in the patient's data and determines if it is outside the normal range. Rather than hard code the rules into this class, we used the Strategy design pattern with the AlertStrategy interface. So, if a doctor decides to use a new sort of rule (such as the trend of values instead of individual values), we can add another class without changing AlertGenerator. The ThresholdRule class allows each patient to have different minimum and maximum values for their vitals (such as heart rate), because patients vary in their "normal" ranges.
 
-When a rule fires, an `Alert` object (patient ID, condition string, timestamp)
-is handed to `AlertManager`, which holds a `List<MedicalStaff>` (corrected
-from the earlier `List<String>`) and notifies the appropriate staff member.
-The `AlertStrategy` interface with `ThresholdRule` as a concrete implementation
-allows per-patient threshold customisation without modifying `AlertGenerator`.
+When a vital is outside of range, we create an Alert object. The Alert object contains the patient number, the alert and a time stamp to tell us when the problem occurred. The AlertManager then manages to send the alert to the right MedicalStaff member. We've separated AlertGenerator and AlertManager into two classes because one is responsible for generating alerts and the other for dispatching them. This makes each class responsible for one thing (single responsibility), making the system more flexible and testable.
+
+The design is also reusable with the use of an interface and small, single-purpose classes. We could swap in another type of alert (such as an email) without changing the detection code.
 
 ### 2. Data Storage System
 
-![Data Storage System](uml_models/DataStorageSystem.png)
+![Data Storage System](UML/DataStorage.drawio.png)
 
-`DataStorage` is the central repository, holding a map of `Patient` objects
-each of which owns a list of `PatientRecord` entries. The `DataReader` interface
-decouples the storage from its input source; `FileDataReader` is the provided
-implementation. `DataRetriever` handles staff queries (by patient or time range)
-and is gated by `AccessControl`, which checks user roles before returning
-records. A `RetentionPolicy` class periodically purges records older than a
-configured maximum age.
+The data storage system is based on the principle that we need to store patient data securely, find it quickly, and remove it when we don't need it anymore. The primary interface is the DataStorage class. It stores patient data in a Map of patients, indexed by ID — this is quick to look up because we often need to find records for a particular patient. The PatientData class has a single recording (such as a heart-rate reading), the record type, and a timestamp — we want to know when each reading was recorded.
+
+We created the DataReader interface because the storage might need to get data from multiple sources — the Data Access Layer in Diagram 4 is one such source. This allows DataStorage not to know the specific type of reader. The class DataRetriever processes medical staff queries and allows them to filter by patient, by time, or by measurement. We separated this from DataStorage so that the storage and query aspects can remain separated; this is important for good design and for being able to change one aspect without affecting the other.
+
+Since this system deals with patient data, we also created an AccessControl class. It verifies the user's role and returns only patient records if the user has access to patient records, as per the privacy requirement from the assignment. The last requirement is the data retention policy. It periodically cleans up records older than a certain age. This stops the storage from getting too big and helps the hospital comply with data retention standards.
 
 ### 3. Patient Identification System
 
-![Patient Identification System](uml_models/PatientIdentificationSystem.png)
+![Patient Identification System](UML/Patient%20Identification%20System.drawio.png)
 
-`PatientIdentifier` maps incoming simulator IDs to `HospitalPatient` records
-stored in `PatientDatabase`. It delegates the matching logic to
-`IdentificationStrategy` (Strategy pattern), currently implemented by
-`IdMatchStrategy`. `IdentityManager` oversees the whole process: it calls
-`verifyIntegrity()` periodically and logs any unresolvable IDs as
-`MismatchRecord` entries so failures can be investigated without crashing
-the system.
+In a hospital, all simulator measurements need to be associated with the right patient or it could be life-threatening. The PatientIdentifier class is responsible for mapping a simulator ID to a real HospitalPatient. We stored the simulator ID/hospital ID mappings in a Map so that they can be looked up easily.
+
+So that this mapping is adaptable, we used the Strategy pattern with the IdentificationStrategy interface. This allows us to easily change the matching process, say from just ID matching now to name and date of birth matching in the future. The HospitalPatient class stores data like name, date of birth and medical history, while the PatientDatabase class stores the data and provides methods such as findById and addPatient. We split up HospitalPatient (data) and PatientDatabase (storage) because they do different things.
+
+The IdentityManager class deals with complicated issues. If it cannot find a patient ID in the database, then it creates a MismatchRecord recording why and at what time. Now the system doesn't crash and we can record problems so they can be looked into. The verifyIntegrity method is also there to ensure mappings are still valid, in case the patient information is modified. In general, we separated the matching, storage and error handling so that each can be changed separately.
 
 ### 4. Data Access Layer
 
-![Data Access Layer](uml_models/DataAccessLayer.png)
+![Data Access Layer](UML/Data%20Access%20Layer%20Updated.drawio.png)
 
-`DataListener` is an abstract class with three concrete subclasses —
-`TCPDataListener`, `WebSocketDataListener`, and `FileDataListener` — covering
-all three output modes supported by the simulator. `DataParser` converts a raw
-text line into a `PatientRecord`, detecting the format and validating fields
-before returning a typed object. `DataSourceAdapter` composes a listener and a
-parser and pushes parsed records into `DataStorage`, acting as the single seam
-between the external world and the rest of CHMS.
+This diagram is a model for how the simulator data gets into the system. The project description said that data can come in via TCP, WebSocket or file, so we wanted to design something that can work with any of those three without the rest of the system having to know what is being used. So we created a DataListener abstract class that provides the methods connect, disconnect and startListening. The three subclasses (TCPDataListener, WebSocketDataListener, and FileDataListener) all extend DataListener and provide their own versions of the methods. By using inheritance we can later add another source, like an HTTP API, by just defining another subclass, without changing the code that is already working.
+
+We also need to convert data from its raw form. The DataParser class takes care of this. It receives a raw string (which could be JSON, CSV or any other data format), works out what it is, checks it, and returns a nice PatientData object. We wanted to separate the parser from the listeners — one class deals with getting the data off the wire, the other class deals with making sense of it. This makes it easier to debug and test.
+
+The DataSourceAdapter glues it all together. It has a listener and a parser and passes the parsed data on to the storage system (the system in Diagram 2). The adapter is the interface between the "outside world" and CHMS, and prevents the storage or alert systems from knowing how the data comes in. If we change protocols, only this part of the system needs to change.

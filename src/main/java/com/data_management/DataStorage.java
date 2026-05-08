@@ -11,8 +11,16 @@ import com.alerts.AlertGenerator;
  * system.
  * This class serves as a repository for all patient records, organized by
  * patient IDs.
+ *
+ * <p><b>Design pattern — Singleton:</b> a single shared instance is available
+ * via {@link #getInstance()}. Unit tests that need an isolated, empty storage
+ * can still use {@code new DataStorage()} directly.
  */
 public class DataStorage {
+
+    /** The singleton instance; {@code null} until the first call to {@link #getInstance()}. */
+    private static volatile DataStorage instance;
+
     private Map<Integer, Patient> patientMap; // Stores patient objects indexed by their unique patient ID.
 
     /**
@@ -21,6 +29,23 @@ public class DataStorage {
      */
     public DataStorage() {
         this.patientMap = new HashMap<>();
+    }
+
+    /**
+     * Returns the singleton {@code DataStorage} instance, creating it on the
+     * first call (thread-safe lazy initialisation with double-checked locking).
+     *
+     * @return the shared {@code DataStorage} instance
+     */
+    public static DataStorage getInstance() {
+        if (instance == null) {
+            synchronized (DataStorage.class) {
+                if (instance == null) {
+                    instance = new DataStorage();
+                }
+            }
+        }
+        return instance;
     }
 
     /**
