@@ -127,7 +127,7 @@ public class WebSocketClientImpl extends WebSocketClient implements DataReader {
      */
     @Override
     public void onError(Exception ex) {
-        System.err.println("WebSocketClientImpl: error — " + ex.getMessage());
+        System.err.println("WebSocketClientImpl: error " + ex.getMessage());
     }
 
     /**

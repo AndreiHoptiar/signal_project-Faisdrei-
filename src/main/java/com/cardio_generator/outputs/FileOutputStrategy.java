@@ -15,12 +15,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FileOutputStrategy implements OutputStrategy {
 
     // Renamed field from "BaseDirectory" (UpperCamelCase) to "baseDirectory" (lowerCamelCase)
-    // per Google Java Style Guide §5.2.5 (Non-constant field names must be in lowerCamelCase).
+    // per Google Java Style Guide, non-constant field names must be in lowerCamelCase.
     /** The folder where the output files are saved. */
     private String baseDirectory;
 
     // Renamed field from "file_map" (snake_case) to "fileMap" (lowerCamelCase)
-    // per Google Java Style Guide §5.2.5 — field names must be in lowerCamelCase, not snake_case.
+    // per Google Java Style Guide, field names must be in lowerCamelCase, not snake_case.
     /** Remembers the file path for each label so we don't have to build it every time. */
     public final ConcurrentHashMap<String, String> fileMap = new ConcurrentHashMap<>();
 
@@ -30,7 +30,7 @@ public class FileOutputStrategy implements OutputStrategy {
      * @param baseDirectory the folder to save files into
      */
     // Removed the stray blank line that used to sit at the start of the constructor body.
-    // Google Java Style Guide §4.6.1 discourages leading/trailing blank lines inside a block
+    // Google Java Style Guide 4.6.1 discourages leading/trailing blank lines inside a block
     // as they serve no organizational purpose.
     public FileOutputStrategy(String baseDirectory) {
         // Updated reference to use the newly renamed "baseDirectory" field (was "this.BaseDirectory").
@@ -59,7 +59,7 @@ public class FileOutputStrategy implements OutputStrategy {
         }
         // Set the filePath variable
         // Renamed local variable from "FilePath" (UpperCamelCase) to "filePath" (lowerCamelCase)
-        // per Google Java Style Guide §5.2.7 (Local variable names are in lowerCamelCase).
+        // per Google Java Style Guide local variable names are in lowerCamelCase.
         // Also updated references to the renamed "fileMap" and "baseDirectory" fields.
         String filePath = fileMap.computeIfAbsent(label, k -> Paths.get(baseDirectory, label + ".txt").toString());
 

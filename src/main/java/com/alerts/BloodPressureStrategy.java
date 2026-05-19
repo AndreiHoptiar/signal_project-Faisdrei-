@@ -14,8 +14,13 @@ import java.util.List;
  *       or diastolic &gt; 120 or &lt; 60 mmHg.</li>
  *   <li><b>Sustained trend</b> – three consecutive readings of the same BP
  *       channel each rising or falling by more than 10 mmHg.</li>
- *   <li><b>Hypotensive Hypoxemia</b> – a low-systolic reading combined with a
- *       low-saturation reading present anywhere in the record set.</li>
+ *   <li><b>Hypotensive Hypoxemia</b> – a low-systolic reading paired with a
+ *       low-saturation reading that occur within the same 10-minute window.
+ *       The old implementation flagged the alert if both events appeared
+ *       anywhere in the record set, which produced false positives for
+ *       events hours apart; the windowed check addresses the Week 3 feedback
+ *       ("the combined hypotensive hypoxemia alert would be stronger if it
+ *       checked related readings from a relevant time window").</li>
  * </ol>
  *
  * <p>Alerts are created via {@link BloodPressureAlertFactory} so the returned
@@ -29,6 +34,15 @@ public class BloodPressureStrategy implements AlertStrategy {
     private static final double DIASTOLIC_LOW    = 60.0;
     private static final double BP_TREND_DELTA   = 10.0;
     private static final double LOW_SATURATION   = 92.0;
+
+    /**
+     * Two readings (low systolic and low saturation) must occur within this
+     * sliding window to be considered a single Hypotensive Hypoxemia event.
+     * Ten minutes was chosen to match the saturation "rapid drop" window
+     * defined in {@link OxygenSaturationStrategy} and to reflect the timescale
+     * on which clinical hypoxic shock typically progresses.
+     */
+    private static final long HYPOXEMIA_WINDOW_MS = 10L * 60L * 1000L;
 
     private final AlertFactory factory = new BloodPressureAlertFactory();
 
@@ -107,28 +121,44 @@ public class BloodPressureStrategy implements AlertStrategy {
     }
 
     /**
-     * Fires a Hypotensive Hypoxemia alert when the record set contains both a
-     * low-systolic and a low-saturation reading.
+     * Fires a Hypotensive Hypoxemia alert when the record set contains a
+     * low-systolic and a low-saturation reading that occur within the same
+     * {@link #HYPOXEMIA_WINDOW_MS} sliding window.
+     *
+     * <p>The previous implementation only checked whether both events appeared
+     * anywhere in the patient's history, which produced false positives for
+     * unrelated low readings recorded hours or days apart. This windowed
+     * version walks the record list (already sorted by timestamp) and only
+     * fires when at least one pair of (low systolic, low saturation) readings
+     * is at most {@link #HYPOXEMIA_WINDOW_MS} apart in either direction. At
+     * most one alert is fired per evaluation to avoid spamming.
      */
     private void checkHypotensiveHypoxemia(List<PatientRecord> records,
                                             String pid, List<Alert> alerts) {
-        boolean lowSystolic   = false;
-        boolean lowSaturation = false;
-        long    lastTs        = 0L;
+        List<PatientRecord> lowSystolic   = new ArrayList<>();
+        List<PatientRecord> lowSaturation = new ArrayList<>();
 
         for (PatientRecord r : records) {
             if ("SystolicPressure".equals(r.getRecordType())
                     && r.getMeasurementValue() < SYSTOLIC_LOW) {
-                lowSystolic = true;
+                lowSystolic.add(r);
+            } else if (isSaturation(r) && r.getMeasurementValue() < LOW_SATURATION) {
+                lowSaturation.add(r);
             }
-            if (isSaturation(r) && r.getMeasurementValue() < LOW_SATURATION) {
-                lowSaturation = true;
-            }
-            lastTs = r.getTimestamp();
         }
 
-        if (lowSystolic && lowSaturation) {
-            alerts.add(factory.createAlert(pid, "Hypotensive Hypoxemia", lastTs));
+        // Find any pair of (low systolic, low saturation) within the window.
+        for (PatientRecord sys : lowSystolic) {
+            for (PatientRecord sat : lowSaturation) {
+                long delta = Math.abs(sys.getTimestamp() - sat.getTimestamp());
+                if (delta <= HYPOXEMIA_WINDOW_MS) {
+                    // Use the later of the two timestamps so the alert
+                    // marks the moment at which both conditions were known.
+                    long ts = Math.max(sys.getTimestamp(), sat.getTimestamp());
+                    alerts.add(factory.createAlert(pid, "Hypotensive Hypoxemia", ts));
+                    return;
+                }
+            }
         }
     }
 

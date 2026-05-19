@@ -23,7 +23,7 @@ public interface DataReader {
      * {@code dataStorage}.
      *
      * <p>For file-based readers this method blocks until all data has been
-     * read. For streaming readers (e.g. WebSocket) it initiates the connection
+     * read. For streaming readers it initiates the connection
      * and returns while data continues to flow in the background.
      *
      * @param dataStorage the storage where parsed records will be saved
